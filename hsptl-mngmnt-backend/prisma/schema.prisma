@@ -1,0 +1,163 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model Account {
+  id            String       @id @default(auto()) @map("_id") @db.ObjectId
+  email         String       @unique
+  name          String?
+  password      String
+  document      String
+  contract      String
+  isVerfied     Boolean      @default(false)
+  role          Role         @default(STAFF)
+  companyName   String?      // Company name for vendor accounts
+  cert          Certificate?
+  products      Product[]    @relation(fields: [products_id], references: [id])
+  products_id   String[]     @db.ObjectId
+  orders        Orders[]     @relation(fields: [orders_id], references: [id])
+  orders_id     String[]     @db.ObjectId
+  invoice       Invoice[]    @relation(fields: [invoice_id], references: [id])
+  invoice_id    String[]     @db.ObjectId
+  vehicle       Vehicle[]    @relation(fields: [vehicle_id], references: [id])
+  vehicle_id    String[]     @db.ObjectId
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+}
+
+model Orders {
+  id             String       @id @default(auto()) @map("_id") @db.ObjectId
+  products       Json
+  account        Account[]    @relation(fields: [account_id], references: [id])
+  account_id     String[]     @db.ObjectId
+  isVerified     Boolean      @default(false)
+  vendorConfirmed Boolean      @default(false)
+  status         OrderStatus  @default(PENDING)
+  shippment      Shipment?    @relation(fields: [shippment_id], references: [id])
+  shippment_id   String?      @db.ObjectId
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+}
+
+model Shipment {
+  id               String          @id @default(auto()) @map("_id") @db.ObjectId
+  orders           Orders[]        @relation(fields: [], references: [])
+  orders_id        String[]        @db.ObjectId
+  description      String?
+  start            DateTime
+  estimatedArrival DateTime
+  actualArrival    DateTime?
+  destination      String
+  status           ShipmentStatus  @default(PENDING)
+  trackingDetails  Json?           // For storing tracking milestones and notes
+  vehicle          Vehicle?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+}
+
+model Certificate {
+  id           String     @id @default(auto()) @map("_id") @db.ObjectId
+  name         String
+  issued_by    String
+  issueDate    DateTime
+  expiryDate   DateTime?
+  document_url String?
+  status       CertStatus
+  account      Account?   @relation(fields: [account_id], references: [id])
+  account_id   String?    @unique @db.ObjectId
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+}
+
+model Product {
+  id         String        @id @default(auto()) @map("_id") @db.ObjectId
+  name       String
+  price      Float
+  stocks     Int
+  dosage     String?       // For medicines like "200g"
+  category   ProductCategory @default(OTHER)
+  account    Account[]     @relation(fields: [account_id], references: [id])
+  account_id String[]      @db.ObjectId
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+}
+
+model Vehicle {
+  id           String        @id @default(auto()) @map("_id") @db.ObjectId
+  name         String?
+  driver_name  String
+  plate_no     String?
+  status       VehicleStatus @default(AVAILABLE)
+  account      Account[]     @relation(fields: [account_id], references: [id])
+  account_id   String[]      @unique @db.ObjectId
+  shippment    Shipment?     @relation(fields: [shippment_id], references: [id])
+  shippment_id String?       @unique @db.ObjectId
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+model Invoice {
+  id         String        @id @default(auto()) @map("_id") @db.ObjectId
+  amount     Float
+  status     InvoiceStatus
+  issueDate  DateTime      @default(now())
+  account    Account[]     @relation(fields: [account_id], references: [id])
+  account_id String[]      @db.ObjectId
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+}
+
+enum InvoiceStatus {
+  PENDING
+  PAID
+  OVERDUE
+}
+
+enum VehicleStatus {
+  AVAILABLE
+  RESERVED
+  IN_USE
+  MAINTENANCE
+}
+
+enum CertStatus {
+  VALID
+  EXPIRED
+  PENDING
+}
+
+enum Role {
+  STAFF
+  COMPANY
+  ADMIN
+}
+
+enum OrderStatus {
+  PENDING
+  VERIFIED
+  CONFIRMED
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+enum ProductCategory {
+  MEDICINE
+  EQUIPMENT
+  SUPPLIES
+  DEVICE
+  OTHER
+}
+
+enum ShipmentStatus {
+  PENDING
+  IN_TRANSIT
+  DELIVERED
+  DELAYED
+  CANCELLED
+}
